@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package geoippb;
+option go_package = "./;geoippb";
+
+
+// 关键词过滤
+service Geoip {
+    rpc Lookup(ReqLookup) returns (RspLookup) {}
+    rpc LookupBatch(ReqLookupBatch) returns (RspLookupBatch) {}
+    // 查询是否境内、境外等
+    // rpc IsInArea(ReqLookupBatch) returns (RspLookupBatch) {}
+}
+
+message CityResult {
+    string country  = 1;
+    string province = 2;
+    string city     = 3;
+}
+
+message ReqLookup {
+    string ip  = 1;
+}
+
+message RspLookup {
+    CityResult result = 1;
+}
+
+message ReqLookupBatch {
+    repeated string ip  = 1;
+}
+
+message RspLookupBatch {
+    repeated CityResult result = 1;
+}

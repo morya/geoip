@@ -1,0 +1,47 @@
+kind: pipeline
+type: docker
+name: build
+
+volumes:
+  - name: dockersock
+    host:
+      path: /var/run/docker.sock
+  - name: gopathcache
+    host:
+      path: /data/docker-drone-runner-volume/global-gopath
+
+
+trigger:
+  branch:
+    - master
+
+steps:
+  - name: app
+    image: golang:1.17
+    volumes:
+      - name: dockersock
+        path: /var/run/docker.sock
+      - name: gopathcache
+        path: /drone/gopath
+    environment:
+      GOPATH: /drone/gopath
+      GOPROXY: https://goproxy.cn,https://goproxy.io,direct
+      GOPRIVATE: git.eagleplan.fun
+      CGO_ENABLED: 0
+    commands:
+      - go build -tags timetzdata -o app
+
+
+  - name: image
+    image: docker:19.03.15
+    volumes:
+      - name: dockersock
+        path: /var/run/docker.sock
+    environment:
+      APPNAME: ${DRONE_REPO_NAMESPACE}-${DRONE_REPO_NAME}
+      image: registry.cn-huhehaote.aliyuncs.com/moryaden/testing:${DRONE_REPO_NAMESPACE}-${DRONE_REPO_NAME}
+    commands:
+      - docker build -t $APPNAME:${CI_COMMIT_BRANCH} -f Dockerfile-CI .
+      - docker tag $APPNAME:${CI_COMMIT_BRANCH} $image
+      - docker login --username=0great0@163.com registry.cn-huhehaote.aliyuncs.com --password=da80557f16df48da
+      - docker push $image

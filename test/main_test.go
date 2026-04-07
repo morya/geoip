@@ -1,23 +1,21 @@
 package test
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"testing"
 
-	"github.com/lionsoul2014/ip2region/binding/golang/ip2region"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/pkg/errors"
 )
 
 var (
 	ipSamples map[string]string
-	ip2DBTest *ip2region.Ip2Region
 	geoDBTest *geoip2.Reader
 )
 
-const (
+var (
 	key = ""
 	ak  = ""
 )
@@ -28,11 +26,7 @@ func TestMain(m *testing.M) {
 		log.Println(err)
 		return
 	}
-	err = loadIp2Database()
-	if err != nil {
-		log.Println(err)
-		return
-	}
+
 	ipSamples = map[string]string{
 		"中国, 天津, 天津": "117.9.60.131",
 		"中国, 四川, 成都": "119.4.41.224",
@@ -52,12 +46,12 @@ func TestMain(m *testing.M) {
 
 func loadGeolite2Database() error {
 	fobj, err := os.Open("../ip-database/geolite2-city.mmdb")
-	defer fobj.Close()
 	if err != nil {
 		return err
 	}
+	defer fobj.Close()
 
-	data, err := ioutil.ReadAll(fobj)
+	data, err := io.ReadAll(fobj)
 	if err != nil {
 		return errors.Wrap(err, "read geolite2 content failed")
 	}
@@ -67,14 +61,5 @@ func loadGeolite2Database() error {
 		return errors.Wrap(err, "parse geolite2 db failed")
 	}
 	geoDBTest = db
-	return nil
-}
-
-func loadIp2Database() error {
-	ip2DB, err := ip2region.New("../ip-database/ip2region.db")
-	if err != nil {
-		return errors.Wrap(err, "open ip2db failed")
-	}
-	ip2DBTest = ip2DB
 	return nil
 }

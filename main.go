@@ -1,47 +1,82 @@
 package main
 
 import (
-	"flag"
-	"log"
+	"os"
 	"strings"
 
 	_ "github.com/go-micro/plugins/v4/registry/etcd"
-	_ "github.com/go-micro/plugins/v4/registry/kubernetes"
 	"github.com/sirupsen/logrus"
+	"github.com/urfave/cli/v2"
 	"go-micro.dev/v4"
 
-	"git.eagleplan.fun/geoip/pkg/geoippb"
+	"git.gouboyun.tv/live/protos/pb/geoippb"
 )
 
 var (
-	flagGeolite2DB = flag.String("db", "ip-database/geolite2-city.mmdb", "")
-	flagIp2DB      = flag.String("db2", "ip-database/ip2region.db", "")
-	flagLogLevel   = flag.String("loglevel", "info", "[debug,info,warn/error/none]")
-	flagLogFormat  = flag.String("logformat", "json", "json/text")
+	logLevel  string
+	logFormat string
+
+	httpAuthKey string
+	listenPort  int
 )
 
 func initLogging() {
-	l, _ := logrus.ParseLevel(*flagLogLevel)
+	l, _ := logrus.ParseLevel(logLevel)
 	logrus.SetLevel(l)
 
-	switch strings.ToLower(*flagLogFormat) {
+	switch strings.ToLower(logFormat) {
 	case "text":
 
 	default:
 		logrus.SetFormatter(&logrus.JSONFormatter{})
 	}
 }
-func main() {
-	flag.Parse()
-	initLogging()
 
-	var app = NewApp()
+func buildFlags() []cli.Flag {
+	return []cli.Flag{
+		&cli.StringFlag{
+			Name:        "logformat",
+			Value:       "json",
+			Destination: &logFormat,
+			Usage:       "json/text",
+		},
+		&cli.StringFlag{
+			Name:        "loglevel",
+			Value:       "info",
+			Usage:       "[debug,info,warn/error/none]",
+			Destination: &logLevel,
+		},
+		&cli.StringFlag{
+			Name:        "key",
+			Value:       "",
+			Usage:       "specify http call key",
+			EnvVars:     []string{"HTTP_KEY"},
+			Destination: &httpAuthKey,
+		},
+		&cli.IntFlag{
+			Name:        "port",
+			EnvVars:     []string{"PORT"},
+			Usage:       "port to listen",
+			Destination: &listenPort,
+			Value:       80,
+		},
+	}
+}
+
+func action(c *cli.Context) error {
+	os.Args = os.Args[:1]
+	app := NewApp()
 	if err := app.Init(); err != nil {
-		log.Fatal(err)
+		logrus.Fatal(err)
 	}
 
-	var svc = micro.NewService(micro.Name("geoip"))
-	var s = svc.Server()
+	go httpHandle(app)
+
+	svc := micro.NewService(
+		micro.Name("lemon.geoip"),
+		micro.WrapHandler(recoveryHandler),
+	)
+	s := svc.Server()
 	geoippb.RegisterGeoipHandler(s, app)
 
 	svc.Init()
@@ -49,4 +84,22 @@ func main() {
 	if err := svc.Run(); err != nil {
 		logrus.WithError(err).Error("failed")
 	}
+
+	return nil
+}
+
+func main() {
+	app := cli.NewApp()
+	app.Before = func(c *cli.Context) error {
+		initLogging()
+		return nil
+	}
+	app.Flags = buildFlags()
+	app.Action = action
+
+	logrus.Infof("starting")
+	if err := app.Run(os.Args); err != nil {
+		logrus.Fatal(err)
+	}
+	logrus.Info("bye")
 }

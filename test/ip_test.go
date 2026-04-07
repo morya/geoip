@@ -8,24 +8,32 @@ import (
 	"net/http"
 	"testing"
 
-	"git.eagleplan.fun/pkg/gommon/gostring"
+	"git.gouboyun.tv/pkg/gommon/gostring"
 
-	"git.eagleplan.fun/geoip/pkg/db"
+	"git.gouboyun.tv/live/geoip/pkg/db"
 )
 
 func TestSingle(t *testing.T) {
-	var ip = "106.52.96.193"
-record, _:=	db.FindInDatabase(ip2DBTest, geoDBTest, net.ParseIP(ip))
-t.Logf("record=%v", gostring.JsonEncodeString(record))
+	ips := []string{
+		"223.160.226.102",
+	}
+	for _, ip := range ips {
+		record, err := db.FindInDatabase(geoDBTest, net.ParseIP(ip))
+		if err != nil {
+			t.Error(err.Error())
+		}
+		t.Logf("record=%v", gostring.JsonEncodeString(record))
+	}
 }
 
 // 本地ip定位服务
 func TestAll(t *testing.T) {
 	for addr, ip := range ipSamples {
-		record, _ := db.FindInDatabase(ip2DBTest, geoDBTest, net.ParseIP(ip))
+		record, _ := db.FindInDatabase(geoDBTest, net.ParseIP(ip))
 		marshal, _ := json.Marshal(record)
-		fmt.Println(string(marshal))
-		fmt.Println(addr, ip)
+
+		t.Log(string(marshal))
+		t.Log(addr, ip)
 	}
 }
 

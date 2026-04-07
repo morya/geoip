@@ -3,7 +3,7 @@ package db
 import (
 	"strings"
 
-	"git.eagleplan.fun/geoip/pkg/geoippb"
+	"git.gouboyun.tv/live/protos/pb/geoippb"
 )
 
 // 判断省市归属
@@ -13,11 +13,11 @@ func IsInArea(area []string, cityData *geoippb.CityResult) bool {
 	}
 	for i := range area {
 		if i == 0 {
-			if strings.Index(cityData.Province, area[i]) == -1 {
+			if !strings.Contains(cityData.Province, area[i]) {
 				return false
 			}
 		} else {
-			if strings.Index(cityData.City, area[i]) == -1 {
+			if !strings.Contains(cityData.City, area[i]) {
 				return false
 			}
 		}

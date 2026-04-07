@@ -3,35 +3,15 @@ package db
 import (
 	"net"
 
-	"github.com/lionsoul2014/ip2region/binding/golang/ip2region"
 	"github.com/oschwald/geoip2-golang"
 
-	"git.eagleplan.fun/geoip/pkg/geoippb"
+	"git.gouboyun.tv/live/protos/pb/geoippb"
 )
 
 const (
 	Geolite2DbKeyCN = "zh-CN"
 	Geolite2DbKeyEN = "en"
 )
-
-func FindInIp2DB(ip2db *ip2region.Ip2Region, ip string) (*geoippb.CityResult, error) {
-	var city = &geoippb.CityResult{}
-
-	search, err := ip2db.MemorySearch(ip)
-	if err != nil {
-		return nil, err
-	}
-
-	if search.Province == "0" || search.City == "0" {
-		return nil, nil
-	}
-
-	city.Country = search.Country
-	city.Province = search.Province
-	city.City = search.City
-
-	return city, nil
-}
 
 func tranlateGeolite2City(record *geoip2.City, cityData *geoippb.CityResult) {
 	key := Geolite2DbKeyCN
@@ -58,10 +38,6 @@ func FindInGeolite2DB(geodb *geoip2.Reader, ip net.IP) (cityData *geoippb.CityRe
 }
 
 // FindInDatabase 先查ip2db 找不到则查geolite2
-func FindInDatabase(ip2db *ip2region.Ip2Region, geodb *geoip2.Reader, ip net.IP) (cityData *geoippb.CityResult, err error) {
-	cityData, err = FindInIp2DB(ip2db, ip.String())
-	if err != nil || cityData == nil || cityData.City == cityData.Province {
-		cityData, err = FindInGeolite2DB(geodb, ip)
-	}
-	return
+func FindInDatabase(geodb *geoip2.Reader, ip net.IP) (cityData *geoippb.CityResult, err error) {
+	return FindInGeolite2DB(geodb, ip)
 }

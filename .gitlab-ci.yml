@@ -1,0 +1,103 @@
+# stages:
+#   - buildApp
+#   - buildImg
+#   - deploy
+
+
+# variables:
+#   APP_IMAGE: ${DOCKER_REGISTRY}/${CI_PROJECT_NAME}-${CI_PROJECT_ID}:$CI_COMMIT_REF_NAME
+#   APP_IMAGE_IID: ${DOCKER_REGISTRY}/${CI_PROJECT_NAME}-${CI_PROJECT_ID}:$CI_COMMIT_REF_NAME-${CI_PIPELINE_IID}
+
+
+# buildApp:
+#   stage: buildApp
+#   retry: 1
+#   variables:
+#     GOPATH: "$CI_PROJECT_DIR/.gopath"
+#     GOPROXY: https://goproxy.cn
+#     GO111MODULE: "on"
+#     GOPRIVATE: "git.uvod.cn/*"
+#     GONOPROXY: git.uvod.cn
+#     GONOSUMDB: git.uvod.cn
+#   image:
+#     name: "uhub.service.ucloud.cn/tv30/golang-base-micro:1.14.3-alpine"
+#   tags:
+#     - build
+#   only:
+#     - master
+#     - testing
+#   cache:
+#     key: "$CI_COMMIT_REF_SLUG"
+#     paths:
+#       - "$CI_PROJECT_DIR/.gopath"
+#     policy: pull-push
+#   artifacts:
+#     paths:
+#       - geoip
+#       - geolite2-fcity/geolite2-fcity.mmdb
+#   script:
+#     - echo "machine git.uvod.cn login gocd password $GIT_REPO_TOKEN" > ~/.netrc
+#     - export PATH=$PATH:/go/bin
+#     - swag init
+#     - go build -o geoip
+
+
+# buildImg testing:
+#   stage: buildImg
+#   # retry: 2
+#   image:
+#     name: docker:19.03.8
+#   only:
+#     - master
+#     - testing
+#   tags:
+#     - pkg
+#   script:
+#     - docker login -u ${DOCKER_USER} -p ${DOCKER_PASSWORD} ${DOCKER_REGISTRY_HOST}
+#     - docker build --no-cache --force-rm -t ${APP_IMAGE} .
+#     - docker tag ${APP_IMAGE} ${APP_IMAGE_IID}
+#     - docker push ${APP_IMAGE}
+#     - docker push ${APP_IMAGE_IID}
+
+
+# deploy k8s-testing:
+#  image:
+#    name: "uhub.service.ucloud.cn/tv30/helm-kubectl:3.1.2"
+#  stage: deploy
+#  tags:
+#    - k8s-testing
+#  only:
+#    - testing
+#  script:
+#    - mkdir -p $HOME/.kube
+#    - echo "$KUBE_CONFIG_FILE_B64" | base64 -d > $HOME/.kube/config
+#    - kubectl set image --record deployment/geoip geoip=${APP_IMAGE_IID}
+
+
+# deploy k8s-staging:
+#   image:
+#     name: "uhub.service.ucloud.cn/tv30/helm-kubectl:3.1.2"
+#   stage: deploy
+#   tags:
+#     - k8s-prod
+#   only:
+#     - master
+#   script:
+#     - mkdir -p $HOME/.kube
+#     - echo "$KUBE_PROD_CONFIG_FILE_B64" | base64 -d > $HOME/.kube/config
+#     - kubectl -n staging set image --record deployment/geoip geoip=${APP_IMAGE_IID}
+
+
+# deploy k8s-master:
+#   image:
+#     name: "uhub.service.ucloud.cn/tv30/helm-kubectl:3.1.2"
+#   stage: deploy
+#   when: manual
+#   tags:
+#     - k8s-prod
+#   only:
+#     - master
+#   script:
+#     - mkdir -p $HOME/.kube
+#     - echo "$KUBE_PROD_CONFIG_FILE_B64" | base64 -d > $HOME/.kube/config
+#     - kubectl set image --record deployment/geoip geoip=${APP_IMAGE_IID}

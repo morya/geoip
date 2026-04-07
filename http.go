@@ -20,6 +20,31 @@ func httpHandle(app *App) {
 	}
 
 	e := echo.New()
+
+	// 健康检查端点
+	e.GET("/health", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]string{
+			"status":  "healthy",
+			"service": "geoip",
+			"version": "1.0.0",
+		})
+	})
+
+	// 就绪检查端点
+	e.GET("/ready", func(c echo.Context) error {
+		// 检查数据库是否已加载
+		if app.geoDB == nil {
+			return c.JSON(http.StatusServiceUnavailable, map[string]string{
+				"status": "not ready",
+				"reason": "database not loaded",
+			})
+		}
+		return c.JSON(http.StatusOK, map[string]string{
+			"status": "ready",
+		})
+	})
+
+	// IP查询端点
 	e.GET("/geoip/lookup/:ip", func(c echo.Context) error {
 		rsp := &model.RspLookup{}
 		var err error
